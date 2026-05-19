@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interativo Moderno - Sistema Respiratório</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ========================
+           🎨 DESIGN & TIPOGRAFIA
+           ======================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #0B0B0B;
+            color: #F5F5F5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #161616;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease;
+        }
+
+        h1, h2 {
+            margin-bottom: 24px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .question-counter {
+            font-size: 0.9rem;
+            color: #888;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: #222;
+            color: #F5F5F5;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #2A2A2A;
+            border-color: #555;
+            transform: translateY(-2px);
+        }
+
+        .option-btn.correct {
+            background-color: #1b5e20 !important;
+            border-color: #4caf50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            color: #fff;
+        }
+
+        .option-btn.wrong {
+            background-color: #b71c1c !important;
+            border-color: #f44336 !important;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
+            color: #fff;
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* ========================
+           🧩 MODAL / POPUP
+           ======================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: #161616;
+            padding: 32px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+
+        .text-success { color: #4caf50; }
+        .text-danger { color: #f44336; }
+
+        .modal-feedback {
+            margin-bottom: 24px;
+            line-height: 1.5;
+            color: #CCC;
+        }
+
+        .modal-explanation {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+            font-size: 0.9rem;
+            color: #AAA;
+            text-align: left;
+        }
+
+        .btn-primary {
+            background-color: #F5F5F5;
+            color: #0B0B0B;
+            border: none;
+            padding: 14px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            background-color: #DDD;
+            transform: translateY(-2px);
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <div id="quiz-screen" class="card screen active">
+            <div class="question-counter" id="question-counter">Questão 1</div>
+            <h2 id="question-text">Carregando pergunta...</h2>
+            <div class="options-grid" id="options-container"></div>
+        </div>
+
+        <div id="result-screen" class="card screen">
+            <h2>🎉 Quiz Finalizado!</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 10px;">Sua pontuação:</p>
+            <h1 id="score-text" style="font-size: 3rem; color: #4caf50;">0/0</h1>
+            <p id="score-feedback" style="text-align: center; color: #888; margin-bottom: 32px;">Excelente trabalho!</p>
+            <button class="btn-primary" onclick="restartQuiz()">Jogar Novamente</button>
+        </div>
+    </div>
+
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Resultado</h3>
+            <p id="modal-feedback" class="modal-feedback">A resposta correta era...</p>
+            <div id="modal-explanation" class="modal-explanation">Explicação aqui...</div>
+            <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Próxima Questão</button>
+        </div>
+    </div>
+
+    <script>
+        /* ========================
+           🧠 BANCO DE QUESTÕES
+           ======================== */
+        const perguntas = [
+            {
+                pergunta: "A principal função do sistema respiratório está diretamente relacionada a:",
+                opcoes: [
+                    "A produção de energia celular",
+                    "A manutenção da pressão arterial",
+                    "As trocas gasosas entre o meio externo e o sangue",
+                    "A filtração de metabólitos tóxicos",
+                    "A regulação da glicose sanguínea"
+                ],
+                correta: 2,
+                explicacao: "O sistema respiratório realiza trocas gasosas, permitindo a entrada de O2 e saída de CO2."
+            },
+            {
+                pergunta: "A difusão de gases nos alvéolos ocorre principalmente devido:",
+                opcoes: [
+                    "À ação de músculos respiratórios",
+                    "À diferença de pressão parcial dos gases",
+                    "À contração do diafragma",
+                    "À presença de cartilagens",
+                    "À pressão arterial sistêmica"
+                ],
+                correta: 1,
+                explicacao: "A difusão ocorre por gradiente de pressão parcial entre alvéolos e capilares."
+            },
+            {
+                pergunta: "A estrutura que garante a permeabilidade da traqueia durante a ventilação é:",
+                opcoes: [
+                    "Músculo liso contínuo",
+                    "Anéis cartilaginosos incompletos",
+                    "Tecido ósseo rígido",
+                    "Ligamentos fibrosos",
+                    "Pleura visceral"
+                ],
+                correta: 1,
+                explicacao: "Os anéis cartilaginosos impedem o colapso da traqueia."
+            },
+            {
+                pergunta: "A porção respiratória do sistema é caracterizada por:",
+                opcoes: [
+                    "Condução exclusiva de ar",
+                    "Presença de estruturas cartilaginosas",
+                    "Ocorrência de trocas gasosas",
+                    "Alta resistência ao fluxo de ar",
+                    "Ausência de vascularização"
+                ],
+                correta: 2,
+                explicacao: "A porção respiratória inclui alvéolos, onde ocorre troca gasosa."
+            },
+            {
+                pergunta: "A função da epiglote durante a deglutição é:",
+                opcoes: [
+                    "Facilitar a entrada de ar",
+                    "Estimular a fonação",
+                    "Impedir a entrada de alimento nas vias aéreas",
+                    "Aumentar a pressão intratorácica",
+                    "Regular o fluxo sanguíneo"
+                ],
+                correta: 2,
+                explicacao: "Ela fecha a via aérea evitando aspiração de alimentos."
+            },
+            {
+                pergunta: "A maior pressão parcial de O2 nos alvéolos em relação ao sangue venoso resulta em:",
+                opcoes: [
+                    "Entrada de CO2 no alvéolo",
+                    "Saída de O2 do sangue",
+                    "Difusão de O2 para o sangue",
+                    "Equilíbrio gasoso imediato",
+                    "Redução da ventilação"
+                ],
+                correta: 2,
+                explicacao: "O oxigênio difunde do alvéolo (maior pressão) para o sangue."
+            },
+            {
+                pergunta: "A pleura tem como principal função:",
+                opcoes: [
+                    "Produzir oxigênio",
+                    "Realizar trocas gasosas",
+                    "Reduzir atrito entre pulmões e parede torácica",
+                    "Controlar o fluxo sanguíneo",
+                    "Filtrar o ar inspirado"
+                ],
+                correta: 2,
+                explicacao: "Ela permite movimento suave dos pulmões."
+            },
+            {
+                pergunta: "A presença de brônquio traqueal é característica de:",
+                opcoes: [
+                    "Equinos",
+                    "Carnívoros",
+                    "Bovinos e suínos",
+                    "Aves",
+                    "Primatas"
+                ],
+                correta: 2,
+                explicacao: "Esses animais possuem brônquio traqueal adicional."
+            },
+            {
+                pergunta: "Nas aves, a ventilação pulmonar eficiente está associada principalmente:",
+                opcoes: [
+                    "A presença de diafragma",
+                    "A expansão pulmonar direta",
+                    "Aos sacos aéreos",
+                    "A redução da traqueia",
+                    "A ausência de circulação pulmonar"
+                ],
+                correta: 2,
+                explicacao: "Os sacos aéreos mantêm fluxo contínuo de ar."
+            },
+            {
+                pergunta: "A ausência de diafragma nas aves implica que:",
+                opcoes: [
+                    "Não ocorre respiração",
+                    "A ventilação depende de sacos aéreos",
+                    "Não existe troca gasosa",
+                    "O pulmão não funciona",
+                    "O ar não circula"
+                ],
+                correta: 1,
+                explicacao: "A ventilação ocorre por movimentação dos sacos aéreos."
+            },
+            {
+                pergunta: "A relação estrutural entre epitélio alveolar e endotélio capilar permite:",
+                opcoes: [
+                    "Produção de energia",
+                    "Trocas gasosas eficientes",
+                    "Contração muscular",
+                    "Filtração renal",
+                    "Digestão enzimática"
+                ],
+                correta: 1,
+                explicacao: "A proximidade facilita a difusão rápida de gases."
+            },
+            {
+                pergunta: "O mediastino pode ser definido como:",
+                opcoes: [
+                    "Espaço dentro dos pulmões",
+                    "Área externa da cavidade torácica",
+                    "Região entre as cavidades pleurais",
+                    "Parte inferior do diafragma",
+                    "Extensão da traqueia"
+                ],
+                correta: 2,
+                explicacao: "É o espaço entre os pulmões."
+            },
+            {
+                pergunta: "A principal diferença funcional entre sacos aéreos e pulmões nas aves é:",
+                opcoes: [
+                    "Sacos fazem trocas gasosas",
+                    "Pulmões fazem ventilação",
+                    "Sacos ventilam e pulmões fazem trocas",
+                    "Ambos fazem a mesma função",
+                    "Nenhum faz trocas gasosas"
+                ],
+                correta: 2,
+                explicacao: "Sacos aéreos ventilam, pulmões fazem trocas."
+            },
+            {
+                pergunta: "Os parabrônquios são fundamentais porque:",
+                opcoes: [
+                    "Produzem sangue",
+                    "Realizam trocas gasosas nas aves",
+                    "Filtram ar",
+                    "Produzem muco",
+                    "Controlam o diafragma"
+                ],
+                correta: 1,
+                explicacao: "São o local de troca gasosa nas aves."
+            },
+            {
+                pergunta: "A função de equilíbrio ácido-base do sistema respiratório ocorre através:",
+                opcoes: [
+                    "Controle da glicose",
+                    "Eliminação de CO2",
+                    "Produção de O2",
+                    "Filtração renal",
+                    "Digestão de proteínas"
+                ],
+                correta: 1,
+                explicacao: "O CO2 influencia o pH do sangue."
+            },
+            {
+                pergunta: "A função de filtração do sistema respiratório está relacionada principalmente:",
+                opcoes: [
+                    "À produção de enzimas digestivas",
+                    "À retenção de partículas inaladas",
+                    "À absorção de nutrientes",
+                    "À circulação sanguínea sistêmica",
+                    "À contração muscular"
+                ],
+                correta: 1,
+                explicacao: "O sistema respiratório filtra partículas através das vias aéreas, especialmente nas cavidades nasais."
+            },
+            {
+                pergunta: "A presença de vascularização intensa nas conchas nasais permite:",
+                opcoes: [
+                    "Produção de hormônios",
+                    "Aquecimento do ar inspirado",
+                    "Digestão de partículas",
+                    "Troca gasosa direta",
+                    "Filtração renal"
+                ],
+                correta: 1,
+                explicacao: "A rica vascularização aquece o ar antes de chegar aos pulmões."
+            },
+            {
+                pergunta: "A comunicação da faringe com múltiplas estruturas indica que ela:",
+                opcoes: [
+                    "É exclusiva do sistema respiratório",
+                    "Não participa da digestão",
+                    "É uma estrutura compartilhada entre sistemas",
+                    "Não possui função funcional",
+                    "Está isolada anatomicamente"
+                ],
+                correta: 2,
+                explicacao: "A faringe conecta vias respiratórias e digestórias."
+            },
+            {
+                pergunta: "A função da traqueia pode ser melhor descrita como:",
+                opcoes: [
+                    "Realizar trocas gasosas",
+                    "Transportar ar até os pulmões",
+                    "Produzir oxigênio",
+                    "Filtrar sangue",
+                    "Regular pressão arterial"
+                ],
+                correta: 1,
+                explicacao: "A traqueia conduz o ar até os brônquios."
+            },
+            {
+                pergunta: "A presença de bronquíolos indica:",
+                opcoes: [
+                    "Início do sistema digestório",
+                    "Ramificação progressiva das vias aéreas",
+                    "Fim da ventilação pulmonar",
+                    "Produção de muco exclusiva",
+                    "Ausência de troca gasosa"
+                ],
+                correta: 1,
+                explicacao: "Bronquíolos são ramificações menores dos brônquios."
+            },
+            {
+                pergunta: "A diferença entre vias condutoras e respiratórias está no fato de que:",
+                opcoes: [
+                    "Ambas realizam trocas gasosas",
+                    "Apenas a condutora realiza trocas",
+                    "Apenas a respiratória realiza trocas",
+                    "Nenhuma possui função definida",
+                    "Ambas filtram o sangue"
+                ],
+                correta: 2,
+                explicacao: "Somente a porção respiratória realiza trocas gasosas."
+            },
+            {
+                pergunta: "A função de reservatório de sangue do sistema respiratório indica que:",
+                opcoes: [
+                    "Os pulmões armazenam parte do volume sanguíneo",
+                    "Produzem células sanguíneas",
+                    "Controlam o coração diretamente",
+                    "Substituem o sistema circulatório",
+                    "Eliminam sangue"
+                ],
+                correta: 0,
+                explicacao: "Os pulmões podem armazenar parte do sangue do corpo."
+            },
+            {
+                pergunta: "A elasticidade pulmonar é importante porque:",
+                opcoes: [
+                    "Permite digestão eficiente",
+                    "Facilita expansão e retração durante respiração",
+                    "Produzir oxigênio",
+                    "Evita circulação",
+                    "Controla hormônios"
+                ],
+                correta: 1,
+                explicacao: "A elasticidade permite que os pulmões se expandam e retornem ao normal."
+            },
+            {
+                pergunta: "A relação entre ventilação e perfusão é essencial para:",
+                opcoes: [
+                    "Digestão",
+                    "Trocas gasosas eficientes",
+                    "Produção hormonal",
+                    "Movimento muscular",
+                    "Filtração renal"
+                ],
+                correta: 1,
+                explicacao: "Boa ventilação e fluxo sanguíneo garantem troca eficiente de gases."
+            },
+            {
+                pergunta: "A principal característica dos alvéolos que favorece difusão é:",
+                opcoes: [
+                    "Espessura elevada",
+                    "Baixa vascularização",
+                    "Grande superfície e parede fina",
+                    "Rigidez estrutural",
+                    "Ausência de capilares"
+                ],
+                correta: 2,
+                explicacao: "Alvéolos têm grande área e paredes finas para facilitar difusão."
+            },
+            {
+                pergunta: "A eliminação de CO2 influencia diretamente:",
+                opcoes: [
+                    "A pressão arterial apenas",
+                    "O equilíbrio ácido-base",
+                    "A digestão",
+                    "A visão",
+                    "A audição"
+                ],
+                correta: 1,
+                explicacao: "CO2 regula o pH do sangue, afetando o equilíbrio ácido-base."
+            },
+            {
+                pergunta: "A função metabólica do pulmão envolve:",
+                opcoes: [
+                    "Produção de glicose",
+                    "Modificação de substâncias bioativas",
+                    "Digestão de proteínas",
+                    "Produção de urina",
+                    "Armazenamento de gordura"
+                ],
+                correta: 1,
+                explicacao: "O pulmão metaboliza substâncias bioativas."
+            },
+            {
+                pergunta: "O fluxo de ar nas aves é considerado eficiente porque:",
+                opcoes: [
+                    "É bidirecional",
+                    "Não depende de oxigênio",
+                    "É unidirecional",
+                    "Não envolve pulmões",
+                    "É interrompido constantemente"
+                ],
+                correta: 2,
+                explicacao: "Nas aves, o fluxo é contínuo e unidirecional."
+            },
+            {
+                pergunta: "A ausência de expansão pulmonar nas aves significa que:",
+                opcoes: [
+                    "Não respiram",
+                    "A ventilação depende de estruturas auxiliares",
+                    "Não há troca gasosa",
+                    "O ar não entra",
+                    "O pulmão colapsa"
+                ],
+                correta: 1,
+                explicacao: "Os sacos aéreos fazem a ventilação."
+            },
+            {
+                pergunta: "Os sacos aéreos podem invadir ossos, formando:",
+                opcoes: [
+                    "Ossos rígidos",
+                    "Ossos pneumáticos",
+                    "Ossos densos",
+                    "Ossos cartilaginosos",
+                    "Ossos sólidos"
+                ],
+                correta: 1,
+                explicacao: "Eles formam ossos pneumáticos, mais leves."
+            }
+        ];
+
+        /* ========================
+           💻 LÓGICA E ESTADO
+           ======================== */
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const questionCounter = document.getElementById('question-counter');
+        
+        const feedbackModal = document.getElementById('feedback-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalFeedback = document.getElementById('modal-feedback');
+        const modalExplanation = document.getElementById('modal-explanation');
+
+        const letras = ["A)", "B)", "C)", "D)", "E)"];
+
+        function initQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            quizScreen.classList.add('active');
+            resultScreen.classList.remove('active');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            
+            questionText.textContent = currentQuestion.pergunta;
+            questionCounter.textContent = `Questão ${currentQuestionIndex + 1} de ${perguntas.length}`;
+            optionsContainer.innerHTML = '';
+
+            currentQuestion.opcoes.forEach((optionText, index) => {
+                const button = document.createElement('button');
+                button.className = 'option-btn';
+                button.textContent = `${letras[index]} ${optionText}`;
+                button.onclick = () => handleAnswer(button, index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(selectedButton, selectedIndex) {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            const correctIndex = currentQuestion.correta;
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+
+            allButtons.forEach(btn => btn.disabled = true);
+
+            const isCorrect = (selectedIndex === correctIndex);
+
+            if (isCorrect) {
+                selectedButton.classList.add('correct');
+                score++;
+            } else {
+                selectedButton.classList.add('wrong');
+                allButtons[correctIndex].classList.add('correct');
+            }
+
+            setTimeout(() => {
+                const respostaCorretaFormatada = `${letras[correctIndex]} ${currentQuestion.opcoes[correctIndex]}`;
+                showModal(isCorrect, respostaCorretaFormatada, currentQuestion.explicacao);
+            }, 1000);
+        }
+
+        function showModal(isCorrect, correctAnswerText, explicacao) {
+            if (isCorrect) {
+                modalTitle.textContent = "Acertou! ✅";
+                modalTitle.className = "modal-title text-success";
+                modalFeedback.innerHTML = `Mandou bem! A resposta é mesmo:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            } else {
+                modalTitle.textContent = "Errou ❌";
+                modalTitle.className = "modal-title text-danger";
+                modalFeedback.innerHTML = `Poxa, não foi dessa vez.<br>A resposta correta era:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            }
+
+            modalExplanation.innerHTML = `💡 <strong>Explicação:</strong> ${explicacao}`;
+
+            const nextBtn = document.getElementById('next-btn');
+            if (currentQuestionIndex === perguntas.length - 1) {
+                nextBtn.textContent = "Ver Resultados";
+            } else {
+                nextBtn.textContent = "Próxima Questão";
+            }
+
+            feedbackModal.classList.add('active');
+        }
+
+        function nextQuestion() {
+            feedbackModal.classList.remove('active');
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < perguntas.length) {
+                setTimeout(loadQuestion, 300); 
+            } else {
+                setTimeout(showFinalResults, 300);
+            }
+        }
+
+        function showFinalResults() {
+            quizScreen.classList.remove('active');
+            resultScreen.classList.add('active');
+
+            const scoreText = document.getElementById('score-text');
+            const scoreFeedback = document.getElementById('score-feedback');
+            
+            scoreText.textContent = `${score}/${perguntas.length}`;
+
+            const percentage = score / perguntas.length;
+            if (percentage >= 0.9) {
+                scoreFeedback.textContent = "Incrível! Você dominou o assunto de verdade!";
+            } else if (percentage >= 0.6) {
+                scoreFeedback.textContent = "Muito bom! Seus conhecimentos estão bem afiados.";
+            } else {
+                scoreFeedback.textContent = "Continue praticando! Anatomia e fisiologia exigem dedicação.";
+            }
+        }
+
+        function restartQuiz() {
+            initQuiz();
+        }
+
+        initQuiz();
+    </script>
+</body>
+</html>
