@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interativo Moderno - Sistema Respiratório</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ========================
+           🎨 DESIGN & TIPOGRAFIA
+           ======================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #0B0B0B;
+            color: #F5F5F5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #app-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+        }
+
+        .card {
+            background-color: #161616;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease;
+        }
+
+        h1, h2 {
+            margin-bottom: 24px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .question-counter {
+            font-size: 0.9rem;
+            color: #888;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .options-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: #222;
+            color: #F5F5F5;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #2A2A2A;
+            border-color: #555;
+            transform: translateY(-2px);
+        }
+
+        .option-btn.correct {
+            background-color: #1b5e20 !important;
+            border-color: #4caf50 !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            color: #fff;
+        }
+
+        .option-btn.wrong {
+            background-color: #b71c1c !important;
+            border-color: #f44336 !important;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
+            color: #fff;
+        }
+
+        .option-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* ========================
+           🧩 MODAL / POPUP
+           ======================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: #161616;
+            padding: 32px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            font-weight: 800;
+        }
+
+        .text-success { color: #4caf50; }
+        .text-danger { color: #f44336; }
+
+        .modal-feedback {
+            margin-bottom: 24px;
+            line-height: 1.5;
+            color: #CCC;
+        }
+
+        .modal-explanation {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #333;
+            font-size: 0.9rem;
+            color: #AAA;
+            text-align: left;
+        }
+
+        .btn-primary {
+            background-color: #F5F5F5;
+            color: #0B0B0B;
+            border: none;
+            padding: 14px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            background-color: #DDD;
+            transform: translateY(-2px);
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <div id="quiz-screen" class="card screen active">
+            <div class="question-counter" id="question-counter">Questão 1</div>
+            <h2 id="question-text">Carregando pergunta...</h2>
+            <div class="options-grid" id="options-container"></div>
+        </div>
+
+        <div id="result-screen" class="card screen">
+            <h2>🎉 Quiz Finalizado!</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 10px;">Sua pontuação:</p>
+            <h1 id="score-text" style="font-size: 3rem; color: #4caf50;">0/0</h1>
+            <p id="score-feedback" style="text-align: center; color: #888; margin-bottom: 32px;">Excelente trabalho!</p>
+            <button class="btn-primary" onclick="restartQuiz()">Jogar Novamente</button>
+        </div>
+    </div>
+
+    <div id="feedback-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modal-title" class="modal-title">Resultado</h3>
+            <p id="modal-feedback" class="modal-feedback">A resposta correta era...</p>
+            <div id="modal-explanation" class="modal-explanation">Explicação aqui...</div>
+            <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Próxima Questão</button>
+        </div>
+    </div>
+
+    <script>
+        /* ========================
+           🧠 BANCO DE QUESTÕES
+           ======================== */
+        const perguntas = [
+            {
+                pergunta: "A respiração envolve não apenas trocas gasosas, mas também aspectos físicos e químicos. Qual alternativa descreve corretamente essa integração?",
+                opcoes: [
+                    "Produção de energia nas mitocôndrias",
+                    "Ventilação pulmonar, transporte de gases e controle da respiração",
+                    "Apenas movimentos do diafragma",
+                    "Apenas difusão de gases nos alvéolos",
+                    "Apenas transporte de oxigênio pelo sangue"
+                ],
+                correta: 1,
+                explicacao: "A respiração não é apenas a troca de gases nos alvéolos. Ela envolve três etapas integradas: ventilação pulmonar (movimento do ar), difusão de gases (entre alvéolos e sangue) e transporte sistêmico (até os tecidos), além do controle neural e químico da respiração. Isso mostra que é um processo fisiológico complexo, não apenas mecânico."
+            },
+            {
+                pergunta: "A divisão funcional do sistema respiratório em porção condutora e respiratória é importante porque:",
+                opcoes: [
+                    "A porção condutora conduz o ar e a respiratória realiza trocas gasosas",
+                    "Ambas realizam trocas gasosas igualmente",
+                    "Ambas são responsáveis apenas pela filtração",
+                    "A porção respiratória não participa da ventilação",
+                    "A porção condutora realiza trocas gasosas e a respiratória conduz ar"
+                ],
+                correta: 0,
+                explicacao: "A divisão funcional é essencial para entender que nem todas as estruturas respiratórias têm a mesma função. A porção condutora prepara o ar (filtra, aquece e conduz), enquanto a porção respiratória é altamente especializada para trocas gasosas, com paredes finas e grande vascularização. Misturar essas funções é um erro comum em prova."
+            },
+            {
+                pergunta: "Por que as conchas nasais são altamente vascularizadas?",
+                opcoes: [
+                    "Para controlar a frequência respiratória",
+                    "Para aquecer e umidificar o ar inspirado",
+                    "Para permitir trocas gasosas iniciais",
+                    "Para produzir células de defesa",
+                    "Para aumentar a pressão do ar"
+                ],
+                correta: 1,
+                explicacao: "A vascularização intensa permite troca de calor eficiente entre o sangue e o ar inspirado. Isso evita que ar frio ou seco atinja os pulmões, protegendo o epitélio respiratório. Além disso, contribui para umidificação e retenção de partículas, sendo uma primeira linha de defesa do sistema respiratório."
+            },
+            {
+                pergunta: "A presença de diferentes meatos nasais está diretamente relacionada a:",
+                opcoes: [
+                    "Produção de hormônios",
+                    "Formação de alvéolos",
+                    "Separação funcional do fluxo de ar",
+                    "Controle da frequência cardíaca",
+                    "Aumento da pressão pulmonar"
+                ],
+                correta: 2,
+                explicacao: "Os meatos nasais não existem por acaso — eles organizam o fluxo de ar dentro da cavidade nasal, aumentando o contato com as conchas e o epitélio. Isso melhora a eficiência de aquecimento, filtração e também direciona o ar para regiões olfatórias quando necessário."
+            },
+            {
+                pergunta: "A faringe é considerada uma estrutura estratégica porque:",
+                opcoes: [
+                    "Atua exclusivamente no sistema respiratório",
+                    "Produz oxigênio diretamente",
+                    "Controla a pressão arterial",
+                    "Realiza trocas gasosas",
+                    "É um ponto comum entre os sistemas digestório e respiratório"
+                ],
+                correta: 4,
+                explicacao: "A faringe é um ponto crítico porque serve como via comum para ar e alimento. Isso exige coordenação precisa entre respiração e deglutição. Qualquer falha nesse mecanismo pode levar à aspiração, o que mostra sua importância clínica além da anatômica."
+            },
+            {
+                pergunta: "A função da epiglote está diretamente relacionada a:",
+                opcoes: [
+                    "Proteção das vias aéreas durante a deglutição",
+                    "Controle da pressão pulmonar",
+                    "Produção de som",
+                    "Filtração do ar",
+                    "Trocas gasosas"
+                ],
+                correta: 0,
+                explicacao: "A epiglote atua como uma estrutura de proteção dinâmica. Durante a deglutição, ela fecha a entrada da laringe (glote), impedindo que alimentos ou líquidos entrem nas vias respiratórias. Esse mecanismo é essencial para evitar engasgos e aspiração pulmonar."
+            },
+            {
+                pergunta: "Qual característica estrutural da traqueia é essencial para sua função?",
+                opcoes: [
+                    "Presença de válvulas",
+                    "Epitélio pavimentoso simples",
+                    "Anéis cartilaginosos incompletos",
+                    "Ausência de suporte estrutural",
+                    "Presença de músculos lisos apenas"
+                ],
+                correta: 2,
+                explicacao: "Os anéis cartilaginosos incompletos garantem que a traqueia permaneça aberta mesmo durante variações de pressão (inspiração/expiração). A abertura posterior permite acomodação do esôfago durante a deglutição, mostrando uma adaptação funcional importante."
+            },
+            {
+                pergunta: "O gradiente de pressão parcial de gases nos alvéolos permite:",
+                opcoes: [
+                    "Produção de energia",
+                    "Filtração do sangue",
+                    "Transporte ativo de gases",
+                    "Difusão passiva de O₂ e CO₂",
+                    "Produção de oxigênio"
+                ],
+                correta: 3,
+                explicacao: "A difusão de gases ocorre passivamente, sempre do local de maior para o de menor pressão parcial. Nos alvéolos, o oxigênio entra no sangue e o CO₂ sai dele justamente por esse gradiente, sem gasto de energia, o que é fundamental para a eficiência do sistema."
+            },
+            {
+                pergunta: "O fato de o pulmão direito ser maior que o esquerdo está relacionado a:",
+                opcoes: [
+                    "Maior função respiratória",
+                    "Diferença de pressão",
+                    "Presença de diafragma unilateral",
+                    "Presença do coração deslocando o pulmão esquerdo",
+                    "Maior número de alvéolos no direito"
+                ],
+                correta: 3,
+                explicacao: "O pulmão esquerdo é menor devido à presença do coração no mediastino, que ocupa espaço no lado esquerdo da cavidade torácica. Isso resulta em assimetria pulmonar, algo importante em anatomia comparada e clínica."
+            },
+            {
+                pergunta: "A pleura tem papel fundamental na mecânica respiratória porque:",
+                opcoes: [
+                    "Produz ar",
+                    "Reduz o atrito e permite deslizamento pulmonar",
+                    "Filtra o sangue",
+                    "Controla a frequência respiratória",
+                    "Realiza trocas gasosas"
+                ],
+                correta: 1,
+                explicacao: "A pleura produz um líquido que reduz drasticamente o atrito entre os pulmões e a parede torácica. Isso permite movimentos suaves durante a respiração e mantém os pulmões “aderidos” à caixa torácica, facilitando sua expansão."
+            },
+            {
+                pergunta: "A ausência de diafragma nas aves implica que:",
+                opcoes: [
+                    "Não há troca gasosa",
+                    "A ventilação depende de sacos aéreos",
+                    "O pulmão se expande como nos mamíferos",
+                    "Elas não respiram",
+                    "A respiração ocorre apenas pela boca"
+                ],
+                correta: 1,
+                explicacao: "Sem diafragma, as aves utilizam um sistema de sacos aéreos que funcionam como “foles”, movimentando o ar de forma contínua. Isso substitui o mecanismo de expansão pulmonar típico dos mamíferos."
+            },
+            {
+                pergunta: "O brônquio traqueal presente em bovinos e suínos tem importância porque:",
+                opcoes: [
+                    "Produz muco",
+                    "Controla a respiração",
+                    "Substitui os brônquios principais",
+                    "Realiza trocas gasosas",
+                    "Conduz ar diretamente a regiões específicas do pulmão"
+                ],
+                correta: 4,
+                explicacao: "O brônquio traqueal é uma adaptação anatômica que permite ventilação direta de partes específicas do pulmão, aumentando a eficiência em certas espécies. Esse detalhe é clássico de prova comparativa entre animais."
+            },
+            {
+                pergunta: "O órgão vômero-nasal está funcionalmente associado a:",
+                opcoes: [
+                    "Produção de muco",
+                    "Controle da pressão sanguínea",
+                    "Digestão",
+                    "Detecção de feromônios",
+                    "Respiração pulmonar"
+                ],
+                correta: 3,
+                explicacao: "O órgão vômero-nasal detecta feromônios, substâncias químicas importantes para comunicação entre indivíduos, especialmente no comportamento reprodutivo. O reflexo de Flehmen facilita essa captação."
+            },
+            {
+                pergunta: "Os seios paranasais contribuem para a fisiologia respiratória ao:",
+                opcoes: [
+                    "Controlar o fluxo pulmonar",
+                    "Aumentar o peso do crânio",
+                    "Produzir sangue",
+                    "Atuar como ressonadores e reduzir peso",
+                    "Realizar trocas gasosas"
+                ],
+                correta: 3,
+                explicacao: "Os seios paranasais reduzem o peso do crânio, protegem estruturas internas e funcionam como caixas de ressonância para sons. Embora não participem diretamente das trocas gasosas, têm papel importante na fisiologia e proteção."
+            },
+            {
+                pergunta: "Nas aves, a eficiência respiratória é maior porque:",
+                opcoes: [
+                    "Possuem mais alvéolos",
+                    "Não possuem traqueia",
+                    "O ar circula em fluxo unidirecional pelos parabrônquios",
+                    "Possuem diafragma mais forte",
+                    "Respiram apenas pela boca"
+                ],
+                correta: 2,
+                explicacao: "Nas aves, o ar percorre os parabrônquios em fluxo unidirecional, diferente dos mamíferos. Isso garante que o ar rico em oxigênio esteja sempre passando pela área de troca, aumentando muito a eficiência respiratória — uma adaptação essencial para o voo."
+            },
+            {
+                pergunta: "Durante a inspiração, qual evento ocorre primeiro para permitir a entrada de ar nos pulmões?",
+                opcoes: [
+                    "Relaxamento dos músculos intercostais",
+                    "Fechamento da glote",
+                    "Contração do diafragma",
+                    "Saída de CO₂ dos alvéolos",
+                    "Aumento da pressão intrapulmonar"
+                ],
+                correta: 2,
+                explicacao: "A inspiração é iniciada pela contração do diafragma e dos músculos intercostais externos, o que aumenta o volume da cavidade torácica. Segundo a lei de Boyle, quando o volume aumenta, a pressão diminui. Essa queda na pressão intrapulmonar cria um gradiente que permite a entrada de ar. Ou seja, o movimento muscular vem antes da entrada de ar — não o contrário."
+            },
+            {
+                pergunta: "A principal função do muco presente nas vias respiratórias é:",
+                opcoes: [
+                    "Capturar partículas e microrganismos",
+                    "Produzir oxigênio",
+                    "Aumentar a pressão alveolar",
+                    "Controlar a ventilação",
+                    "Facilitar a troca gasosa"
+                ],
+                correta: 0,
+                explicacao: "O muco não participa diretamente da respiração gasosa, mas é essencial na defesa do sistema respiratório. Ele aprisiona partículas inaladas (poeira, microrganismos), que depois são transportadas pelo movimento ciliar em direção à faringe. Esse sistema mucociliar evita que essas partículas alcancem os alvéolos, onde poderiam causar infecções ou prejuízo às trocas gasosas."
+            },
+            {
+                pergunta: "Qual característica dos alvéolos aumenta significativamente a eficiência das trocas gasosas?",
+                opcoes: [
+                    "Presença de cartilagem",
+                    "Parede espessa",
+                    "Presença de músculo liso",
+                    "Baixa vascularização",
+                    "Grande área de superfície"
+                ],
+                correta: 4,
+                explicacao: "A eficiência das trocas gasosas depende diretamente da área de contato disponível para difusão. Os alvéolos aumentam enormemente essa área (milhões deles), além de possuírem paredes extremamente finas e íntimo contato com capilares. Esses fatores, combinados, seguem os princípios da difusão (Lei de Fick), maximizando a troca de gases."
+            },
+            {
+                pergunta: "O colapso alveolar é evitado principalmente por qual substância?",
+                opcoes: [
+                    "Muco",
+                    "Surfactante pulmonar",
+                    "Hemoglobina",
+                    "Linfa",
+                    "Plasma sanguíneo"
+                ],
+                correta: 1,
+                explicacao: "O surfactante pulmonar reduz a tensão superficial do líquido que reveste os alvéolos. Sem ele, a tendência natural seria o colapso alveolar (atelectasia), especialmente durante a expiração. Isso tornaria a reexpansão pulmonar muito difícil e energeticamente custosa, comprometendo a ventilação."
+            },
+            {
+                pergunta: "A relação entre ventilação e perfusão (V/Q) é importante porque:",
+                opcoes: [
+                    "Controla os movimentos respiratórios",
+                    "Aumenta a pressão arterial",
+                    "Determina a produção de muco",
+                    "Garante eficiência nas trocas gasosas",
+                    "Regula a frequência cardíaca"
+                ],
+                correta: 3,
+                explicacao: "A eficiência da hematose depende do equilíbrio entre ventilação (ar que chega) e perfusão (sangue que chega). Se houver ventilação sem perfusão (ou vice-versa), as trocas gasosas ficam prejudicadas. Esse conceito (relação V/Q) é essencial em fisiologia e muito cobrado em provas clínicas."
+            },
+            {
+                pergunta: "Qual estrutura impede a entrada de partículas maiores nas vias respiratórias inferiores?",
+                opcoes: [
+                    "Alvéolos",
+                    "Narinas e pelos nasais",
+                    "Pleura",
+                    "Brônquios",
+                    "Diafragma"
+                ],
+                correta: 1,
+                explicacao: "As narinas e os pelos nasais representam a primeira barreira mecânica do sistema respiratório. Eles filtram partículas maiores logo na entrada do ar. Esse mecanismo reduz a carga de partículas que chegam às estruturas mais profundas, protegendo o sistema como um todo."
+            },
+            {
+                pergunta: "A hematose ocorre especificamente em qual local?",
+                opcoes: [
+                    "Traqueia",
+                    "Cavidade nasal",
+                    "Alvéolos pulmonares",
+                    "Faringe",
+                    "Bronquíolos terminais"
+                ],
+                correta: 2,
+                explicacao: "A hematose ocorre nos alvéolos porque ali existe uma interface extremamente fina entre ar e sangue (membrana alveolocapilar). Essa estrutura permite difusão rápida de O₂ para o sangue e de CO₂ para o interior dos alvéolos, seguindo gradientes de pressão."
+            },
+            {
+                pergunta: "A presença de cartilagem nos brônquios tem como principal função:",
+                opcoes: [
+                    "Facilitar a difusão de gases",
+                    "Manter as vias aéreas abertas",
+                    "Produzir muco",
+                    "Controlar a respiração",
+                    "Realizar trocas gasosas"
+                ],
+                correta: 1,
+                explicacao: "A cartilagem nos brônquios garante suporte estrutural, impedindo o colapso das vias aéreas durante variações de pressão. Isso é especialmente importante durante a expiração, quando há tendência de compressão das vias."
+            },
+            {
+                pergunta: "O aumento da concentração de CO₂ no sangue estimula diretamente:",
+                opcoes: [
+                    "Fechamento das vias aéreas",
+                    "Redução da circulação sanguínea",
+                    "Produção de muco",
+                    "Aumento da frequência respiratória",
+                    "Diminuição da respiração"
+                ],
+                correta: 3,
+                explicacao: "O CO₂ dissolvido no sangue forma ácido carbônico, reduzindo o pH. Essa acidificação é detectada por quimiorreceptores centrais e periféricos, que estimulam o centro respiratório a aumentar a frequência e profundidade da respiração, promovendo a eliminação do CO₂."
+            },
+            {
+                pergunta: "A principal diferença funcional entre bronquíolos terminais e respiratórios é:",
+                opcoes: [
+                    "Capacidade de realizar trocas gasosas",
+                    "Presença de cartilagem",
+                    "Produção de muco",
+                    "Controle neural",
+                    "Presença de vasos sanguíneos"
+                ],
+                correta: 0,
+                explicacao: "Os bronquíolos terminais ainda fazem parte da zona condutora e não participam da troca gasosa. Já os bronquíolos respiratórios possuem alvéolos em suas paredes, iniciando a zona respiratória. Essa transição marca o início efetivo da hematose."
+            },
+            {
+                pergunta: "A pressão negativa na cavidade pleural é importante porque:",
+                opcoes: [
+                    "Produz oxigênio",
+                    "Impede a entrada de ar",
+                    "Regula o pH sanguíneo",
+                    "Mantém os pulmões expandidos",
+                    "Controla o diafragma"
+                ],
+                correta: 3,
+                explicacao: "A pressão negativa na cavidade pleural atua como uma força de sucção que mantém os pulmões aderidos à parede torácica. Isso permite sua expansão durante a inspiração. Quando essa pressão é perdida, como no pneumotórax, ocorre colapso pulmonar."
+            },
+            {
+                pergunta: "A função dos músculos intercostais externos durante a respiração é:",
+                opcoes: [
+                    "Aumentar o volume torácico",
+                    "Diminuir o volume torácico",
+                    "Produzir muco",
+                    "Controlar o pH",
+                    "Realizar trocas gasosas"
+                ],
+                correta: 0,
+                explicacao: "Os músculos intercostais externos elevam as costelas, expandindo a caixa torácica nos sentidos lateral e ântero-posterior. Isso contribui para o aumento do volume torácico, reduzindo a pressão intrapulmonar e facilitando a entrada de ar."
+            },
+            {
+                pergunta: "O transporte de oxigênio no sangue ocorre principalmente através de:",
+                opcoes: [
+                    "Plasma",
+                    "Hemoglobina",
+                    "Leucócitos",
+                    "Linfa",
+                    "Plaquetas"
+                ],
+                correta: 1,
+                explicacao: "A hemoglobina, presente nas hemácias, se liga ao oxigênio de forma reversível. Isso permite que o O₂ seja transportado dos pulmões para os tecidos e liberado conforme a demanda metabólica. Apenas uma pequena fração do oxigênio fica dissolvida no plasma."
+            },
+            {
+                pergunta: "Qual fator facilita a difusão de gases nos alvéolos?",
+                opcoes: [
+                    "Gradiente de pressão",
+                    "Alta viscosidade do sangue",
+                    "Presença de cartilagem",
+                    "Redução da área de contato",
+                    "Aumento da espessura da membrana"
+                ],
+                correta: 0,
+                explicacao: "A difusão gasosa depende principalmente do gradiente de pressão parcial entre o ar alveolar e o sangue. Quanto maior essa diferença, maior a taxa de difusão. Esse princípio é fundamental para a eficiência da hematose."
+            },
+            {
+                pergunta: "Em condições normais, o que acontece com o CO₂ ao chegar aos pulmões?",
+                opcoes: [
+                    "Permanece no sangue",
+                    "Difunde-se para os alvéolos e é eliminado",
+                    "É convertido em oxigênio",
+                    "É absorvido pelos tecidos pulmonares",
+                    "É armazenado nos alvéolos"
+                ],
+                correta: 1,
+                explicacao: "O CO₂, transportado principalmente na forma de bicarbonato, é reconvertido em gás nos pulmões. Ele então se difunde para os alvéolos seguindo o gradiente de pressão e é eliminado na expiração, contribuindo para o controle do pH sanguíneo."
+            }
+        ];
+
+        /* ========================
+           💻 LÓGICA E ESTADO
+           ======================== */
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const questionCounter = document.getElementById('question-counter');
+        
+        const feedbackModal = document.getElementById('feedback-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalFeedback = document.getElementById('modal-feedback');
+        const modalExplanation = document.getElementById('modal-explanation');
+
+        const letras = ["A)", "B)", "C)", "D)", "E)"];
+
+        function initQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            quizScreen.classList.add('active');
+            resultScreen.classList.remove('active');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            
+            questionText.textContent = currentQuestion.pergunta;
+            questionCounter.textContent = `Questão ${currentQuestionIndex + 1} de ${perguntas.length}`;
+            optionsContainer.innerHTML = '';
+
+            currentQuestion.opcoes.forEach((optionText, index) => {
+                const button = document.createElement('button');
+                button.className = 'option-btn';
+                button.textContent = `${letras[index]} ${optionText}`;
+                button.onclick = () => handleAnswer(button, index);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function handleAnswer(selectedButton, selectedIndex) {
+            const currentQuestion = perguntas[currentQuestionIndex];
+            const correctIndex = currentQuestion.correta;
+            const allButtons = optionsContainer.querySelectorAll('.option-btn');
+
+            allButtons.forEach(btn => btn.disabled = true);
+
+            const isCorrect = (selectedIndex === correctIndex);
+
+            if (isCorrect) {
+                selectedButton.classList.add('correct');
+                score++;
+            } else {
+                selectedButton.classList.add('wrong');
+                allButtons[correctIndex].classList.add('correct');
+            }
+
+            setTimeout(() => {
+                const respostaCorretaFormatada = `${letras[correctIndex]} ${currentQuestion.opcoes[correctIndex]}`;
+                showModal(isCorrect, respostaCorretaFormatada, currentQuestion.explicacao);
+            }, 1000);
+        }
+
+        function showModal(isCorrect, correctAnswerText, explicacao) {
+            if (isCorrect) {
+                modalTitle.textContent = "Acertou! ✅";
+                modalTitle.className = "modal-title text-success";
+                modalFeedback.innerHTML = `Mandou bem! A resposta é mesmo:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            } else {
+                modalTitle.textContent = "Errou ❌";
+                modalTitle.className = "modal-title text-danger";
+                modalFeedback.innerHTML = `Poxa, não foi dessa vez.<br>A resposta correta era:<br><strong style="color: #F5F5F5">${correctAnswerText}</strong>`;
+            }
+
+            modalExplanation.innerHTML = `💡 <strong>Explicação:</strong> ${explicacao}`;
+
+            const nextBtn = document.getElementById('next-btn');
+            if (currentQuestionIndex === perguntas.length - 1) {
+                nextBtn.textContent = "Ver Resultados";
+            } else {
+                nextBtn.textContent = "Próxima Questão";
+            }
+
+            feedbackModal.classList.add('active');
+        }
+
+        function nextQuestion() {
+            feedbackModal.classList.remove('active');
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < perguntas.length) {
+                setTimeout(loadQuestion, 300); 
+            } else {
+                setTimeout(showFinalResults, 300);
+            }
+        }
+
+        function showFinalResults() {
+            quizScreen.classList.remove('active');
+            resultScreen.classList.add('active');
+
+            const scoreText = document.getElementById('score-text');
+            const scoreFeedback = document.getElementById('score-feedback');
+            
+            scoreText.textContent = `${score}/${perguntas.length}`;
+
+            const percentage = score / perguntas.length;
+            if (percentage >= 0.9) {
+                scoreFeedback.textContent = "Incrível! Você dominou o assunto de verdade!";
+            } else if (percentage >= 0.6) {
+                scoreFeedback.textContent = "Muito bom! Seus conhecimentos estão bem afiados.";
+            } else {
+                scoreFeedback.textContent = "Continue praticando! Anatomia e fisiologia exigem dedicação.";
+            }
+        }
+
+        function restartQuiz() {
+            initQuiz();
+        }
+
+        initQuiz();
+    </script>
+</body>
+</html>
